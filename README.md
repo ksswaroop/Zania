@@ -6,6 +6,7 @@ Environment file has to be saved in same folder along with other coding files
 2. Open main.py
 3. From Command Prompt, execute the main.py file as below
   streamlit run main.py
+
 4.Open http://localhost:8501/ in browser
 5. Upload pdf by selecting "Browse files" button
 6. Type questions in the text space.
