@@ -17,14 +17,15 @@ with st.sidebar:
     add_vertical_space(5)
     #st.write('Made by Saiswaroop using streamlit')
 
-# Upload a pdf file
+"""Upload a pdf file"""
 pdf = st.file_uploader("Upload your pdf that you want to get information from",type='pdf')
-    # Question 
+"""Question """
 query = st.text_input("Ask questions about your PDF file")
 
-if query and pdf:
+if query and pdf: # Validating if query and pdf are not null
+    """Import function from helper functions"""
     db = lch.create_vector_db_from_pdf(pdf)
     response= lch.get_response_from_query(db,query)
     #response1=textwrap.wrap(response,width=100)
-    st.header("Answer")
-    st.write({query:response})
+    #st.header("Answer")
+    st.write({query:response}) # Display the output as JSON format {key:value}
