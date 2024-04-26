@@ -1,70 +1,77 @@
-"""
-The code file is a wrapper for Langchain helper functions
-Input: PDF file, Questions
-Output: Question, Response
-"""
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAI
-from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
-from langchain.chains.question_answering import load_qa_chain
 from PyPDF2 import PdfReader
+from dotenv import load_dotenv
 
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
+K = 3  
+
+
+"""Loads environment variables from a .env file."""
 load_dotenv()
 
-"""Embeddings to convert strings to numeric representation"""
-embeddings= OpenAIEmbeddings()
+def create_embedding_model():
+    """Creates an instance of the OpenAI embedding model."""
+    return OpenAIEmbeddings()
 
-"""Function to create a database of vectors from PDF that taken as input"""
-def create_vector_db_from_pdf(pdf_reader) -> FAISS:
-    # PDF Reader to read padf
-    pdf_reader = PdfReader(pdf_reader)
-    text= "" 
+def create_vector_database(pdf_reader):
+    """
+    Creates a FAISS vector database from the provided PDF reader object.
+
+    Args:
+        pdf_reader (PyPDF2.PdfReader): The PDF reader object containing the document content.
+
+    Returns:
+        FAISS: The created FAISS vector database.
+    """
+    pdf_reader=PdfReader(pdf_reader)
+    text = ""
     for page in pdf_reader.pages:
-            text += page.extract_text() # Extract text from each page and concatenate 
-    """
-    Split the text into chunks and overlap 
-    For Example, A sentence with 1000 words will be divided into multiple sentences of size 100 in which second sentence start 
-    from 80th word rather than 101 so on.
-    """
+        text += page.extract_text()  # Extract text from each page and concatenate
+
     text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size =1000,
-            chunk_overlap =200,
-            length_function = len
-            )
-    chunks = text_splitter.split_text(text=text)
-    """
-    Using FAISS to create vectorstores
-    """
-    db = FAISS.from_texts(chunks,embedding=embeddings)
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        length_function=len
+    )
+
+    chunks = text_splitter.split_text(text)
+    db = FAISS.from_texts(chunks, embedding=create_embedding_model())
     return db
 
-"""
-Function takes query as input and do similarity search in vector store return the docs.
-Docs get concatenated and return as one paragraph
-"""
-def get_response_from_query(db,query,k=3):
-    # gpt-3.5-turbo-0125 can handle 16385 tokens and returns 4096
-    """Similarity search with Database vectorstores"""
-    docs = db.similarity_search(query,k=k)
-    docs_page_content = " ".join([d.page_content for d in docs])
-    """Object for OpenAI llm"""
-    llm=OpenAI(name="gpt-3.5-turbo-0125",verbose=True,temperature=0.5) 
-    """Promt to OpenAI gpt (Format of the input and template that explain llm how to behave)"""
-    prompt = PromptTemplate(
-        input_variables=["question","docs"],
-        template="""You are a helpful pdf assistant that that can answer questions about
-        document based on the text in pdf.
-        Answer the following question:{question}
-        By searching the attached pdf: {docs}
-        Only use the factual information from the pdf to answer the question.
-        If you feel like you don't have enough information to answer the question,say "Data Not Available"."""
+def get_response_to_query(db, query):
+    """
+    Retrieves a response to a given query using the vector database.
+
+    Args:
+        db (FAISS): The FAISS vector database containing document representations.
+        query (str): The user's query to be answered.
+
+    Returns:
+        str: The generated response to the query, or "Data Not Available" if insufficient information is found.
+    """
+
+    similar_docs = db.similarity_search(query, k=K)
+    concatenated_content = " ".join([doc.page_content for doc in similar_docs])
+
+    llm = OpenAI(name="gpt-3.5-turbo-0125", verbose=True, temperature=0.5)
+
+    prompt_template = PromptTemplate(
+        input_variables=["question", "docs"],
+        template="""
+        You are a helpful PDF assistant that can answer questions about a document based on its text.
+        Answer the following question: {question}
+        By searching the attached PDF: {docs}
+        Only use the factual information from the PDF to answer the question.
+        If you feel like you don't have enough information to answer the question, say "Data Not Available".
+        """
     )
-    """LLMChain to integrate the functionalities of llm and prompt"""
-    chain=LLMChain(llm=llm, prompt=prompt)
-    response = chain.run(question=query,docs=docs_page_content)
-    response = response.replace("\n","") # Remove newline characters
-    return response
+
+    llm_chain = LLMChain(llm=llm, prompt=prompt_template)
+    response = llm_chain.run(question=query, docs=concatenated_content)
+    return response.replace("\n", "")  # Remove newline characters

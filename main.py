@@ -1,31 +1,44 @@
 import streamlit as st
 from streamlit_extras.add_vertical_space import add_vertical_space
-import langchain_helper as lch
-import textwrap
+import langchain_helper as llm_helper 
 
-# Sidebar Content
-with st.sidebar:
+def main():
+  """
+  The main function for the Zania Document Assistant Streamlit app.
+  """
+
+  # Sidebar Content
+  with st.sidebar:
     st.title("Zania Document Assistant")
-    st.markdown('''
-    ## About
-    This app is an LLM-powered chatbot built using:
-    - [Streamlit](https://streamlit.io/)
-    - [LangChain](https://python.langchain.com/)
-    - [OpenAI](https://platform.openai.com/docs/models) LLM model
-                
-    ''')
+    st.markdown(
+        """
+        ## About
+
+        This app is an LLM-powered document assistant built using:
+
+        - Streamlit 
+        - LangChain 
+        - OpenAI LLM models
+
+        """
+    )
     add_vertical_space(5)
-    #st.write('Made by Saiswaroop using streamlit')
 
-"""Upload a pdf file"""
-pdf = st.file_uploader("Upload your pdf that you want to get information from",type='pdf')
-"""Question """
-query = st.text_input("Ask questions about your PDF file")
+  """Upload a PDF File"""
+  uploaded_pdf = st.file_uploader("Upload a PDF file for information extraction", type="pdf")
 
-if query and pdf: # Validating if query and pdf are not null
-    """Import function from helper functions"""
-    db = lch.create_vector_db_from_pdf(pdf)
-    response= lch.get_response_from_query(db,query)
-    #response1=textwrap.wrap(response,width=100)
-    #st.header("Answer")
-    st.write({query:response}) # Display the output as JSON format {key:value}
+  """Question about the PDF"""
+  user_query = st.text_input("Ask a question about your uploaded PDF")
+
+  if uploaded_pdf and user_query:  # Validate both file and query presence
+    # Process the uploaded PDF
+    document_database = llm_helper.create_vector_database(uploaded_pdf)
+
+    # Generate a response to the user's query
+    response = llm_helper.get_response_to_query(document_database, user_query)
+
+    # Display the response in a clear and user-friendly format
+    st.write(response)
+
+if __name__ == "__main__":
+  main()
