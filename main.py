@@ -38,7 +38,7 @@ def main():
     response = llm_helper.get_response_to_query(document_database, user_query)
 
     # Display the response in a clear and user-friendly format
-    st.write(response)
+    st.write({user_query:response})
 
 if __name__ == "__main__":
   main()
