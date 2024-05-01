@@ -62,7 +62,7 @@ def retrieval_chain(retriever):
 # Function to answer questions based on retrieved context
 def question_answer(retrieval_chain, question):
     # RAG
-    template = """Answer the following question based on this context:
+    template = """Answer the following question based on this context.If you feel like you don't have enough information to answer the question, say "Data Not Available":
     {context}
     
     Question: {question}
